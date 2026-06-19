@@ -6,6 +6,7 @@ import '../../data/models/barang_model.dart';
 import '../providers/barang_provider.dart';
 import 'tambah_barang_screen.dart';
 import '../../../reminder/presentation/pages/notifications_screen.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 class ManajemenBarangScreen extends ConsumerStatefulWidget {
   const ManajemenBarangScreen({super.key});
@@ -89,13 +90,17 @@ class _ManajemenBarangScreenState extends ConsumerState<ManajemenBarangScreen> {
           FloatingActionButton(
             heroTag: 'scan_fab',
             backgroundColor: primaryGreen,
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Fitur Scan Barcode (Segera Hadir)'),
-                  behavior: SnackBarBehavior.floating,
+            onPressed: () async {
+              final res = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SimpleBarcodeScannerPage(),
                 ),
               );
+              if (res is String && res != '-1') {
+                barangNotifier.setSearch(res);
+                _searchController.text = res;
+              }
             },
             child: Icon(Icons.qr_code_scanner, color: c.surface),
           ),

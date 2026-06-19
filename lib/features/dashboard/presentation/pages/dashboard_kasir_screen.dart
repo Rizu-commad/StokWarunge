@@ -7,6 +7,7 @@ import '../../../../features/kasir/presentation/pages/kasir_screen.dart';
 import '../../../../features/utang/presentation/pages/buku_utang_screen.dart';
 import '../../../../features/pengaturan/presentation/pages/pengaturan_kasir_screen.dart';
 import '../../../../features/reminder/presentation/pages/notifications_screen.dart';
+import '../../../../features/transaksi/presentation/providers/transaksi_provider.dart';
 import '../providers/dashboard_provider.dart';
 
 class DashboardKasirScreen extends ConsumerStatefulWidget {
@@ -87,7 +88,7 @@ class _DashboardKasirScreenState extends ConsumerState<DashboardKasirScreen> {
                   const SizedBox(height: 24),
 
                   // Recent Activity Feed
-                  _buildRecentActivity(c),
+                  _buildRecentActivity(c, ref),
                   const SizedBox(height: 24),
 
                   // Tip Card
@@ -345,7 +346,10 @@ class _DashboardKasirScreenState extends ConsumerState<DashboardKasirScreen> {
     );
   }
 
-  Widget _buildRecentActivity(AppColors c) {
+  Widget _buildRecentActivity(AppColors c, WidgetRef ref) {
+    final transaksiState = ref.watch(transaksiProvider);
+    final riwayat = transaksiState.transaksiHariIni.take(3).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -370,23 +374,47 @@ class _DashboardKasirScreenState extends ConsumerState<DashboardKasirScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: c.cardColor,
-            border: Border.all(color: c.outlineVariant),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: Column(
-              children: [
-                Icon(Icons.receipt_long_outlined, size: 40, color: c.outlineVariant),
-                const SizedBox(height: 8),
-                Text('Belum ada aktivitas', style: TextStyle(color: c.greyText, fontSize: 14)),
-              ],
+        if (riwayat.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: c.cardColor,
+              border: Border.all(color: c.outlineVariant),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.receipt_long_outlined, size: 40, color: c.outlineVariant),
+                  const SizedBox(height: 8),
+                  Text('Belum ada aktivitas', style: TextStyle(color: c.greyText, fontSize: 14)),
+                ],
+              ),
+            ),
+          )
+        else
+          Column(
+            children: riwayat.map((t) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: _buildActivityItem(
+                  c: c,
+                  title: 'Transaksi #${t.id.substring(0, 5)}',
+                  timeInfo: '${t.createdAt.toLocal().hour.toString().padLeft(2, '0')}:${t.createdAt.toLocal().minute.toString().padLeft(2, '0')} • ${t.metode}',
+                  amount: _formatCurrency(t.total),
+                  icon: Icons.receipt_long_outlined,
+                  amountColor: c.statusSuccess,
+                  onTap: () => _showDetailTransaksi(
+                    context, c,
+                    'Transaksi #${t.id.substring(0, 5)}',
+                    '${t.createdAt.toLocal().hour.toString().padLeft(2, '0')}:${t.createdAt.toLocal().minute.toString().padLeft(2, '0')}',
+                    t.metode,
+                    _formatCurrency(t.total),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
-        ),
       ],
     );
   }
@@ -493,7 +521,17 @@ class _DashboardKasirScreenState extends ConsumerState<DashboardKasirScreen> {
   // ─── Riwayat Transaksi Bottom Sheet ───────────────────────────────
   void _showRiwayatSheet(BuildContext context) {
     final c = AppColors.of(context);
-    final List<Map<String, dynamic>> riwayat = [];
+    final transaksiState = ref.watch(transaksiProvider);
+    final riwayat = transaksiState.transaksiHariIni.map((t) {
+      return {
+        'title': 'Transaksi #${t.id.substring(0, 5)}',
+        'time': '${t.createdAt.toLocal().hour.toString().padLeft(2, '0')}:${t.createdAt.toLocal().minute.toString().padLeft(2, '0')}',
+        'metode': t.metode,
+        'amount': _formatCurrency(t.total),
+        'icon': Icons.receipt,
+        'color': c.statusSuccess,
+      };
+    }).toList();
 
     showModalBottomSheet(
       context: context,
